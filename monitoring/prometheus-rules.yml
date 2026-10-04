@@ -1,0 +1,23 @@
+# Full contents of /etc/prometheus/rules/chrony.yml on the Prometheus host.
+# Referenced from prometheus.yml under rule_files:, so replacing the file and
+# reloading is enough — no prometheus.yml change needed.
+#
+# Recording rule only. Alerting lives in Grafana (see grafana-alerts.yml),
+# which notifies by email directly; Prometheus alerts would need Alertmanager
+# as a separate service to reach anything outside the Prometheus UI.
+#
+# instance:chrony_clock_error_seconds:abs is chrony's documented absolute
+# accuracy bound. Dashboard 19186's "Maximum clock error" panel and the
+# Grafana alert of the same name both read it. Recording rules do not
+# backfill, so it stays empty until an evaluation cycle has run.
+
+groups:
+  - name: Chrony
+    rules:
+      - record: instance:chrony_clock_error_seconds:abs
+        expr: >
+          abs(chrony_tracking_last_offset_seconds)
+          +
+          chrony_tracking_root_dispersion_seconds
+          +
+          (0.5 * chrony_tracking_root_delay_seconds)

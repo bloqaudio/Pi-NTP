@@ -1,0 +1,55 @@
+[Unit]
+Description=Prometheus exporter for chrony NTP metrics
+Documentation=https://github.com/SuperQ/chrony_exporter
+After=chrony.service
+Wants=chrony.service
+
+[Service]
+Type=simple
+# chrony.conf sets 'bindcmdaddress 127.0.0.1', so the UDP cmdport is IPv4
+# loopback only -- the exporter's default of [::1]:323 will not connect.
+# The Unix socket sidesteps that and is the only path that answers the
+# privileged serverstats/ntpdata queries.
+#
+# Socket ownership differs by distro (_chrony on Debian/Ubuntu, chrony on
+# RHEL). Verify before enabling:
+#   stat -c '%U:%G %a' /run/chrony/chronyd.sock
+User=_chrony
+Group=_chrony
+
+ExecStart=/usr/local/bin/chrony_exporter \
+    --chrony.address=unix:///run/chrony/chronyd.sock \
+    --collector.tracking \
+    --collector.sources \
+    --collector.sources.with-ntpdata \
+    --collector.sourcestats \
+    --collector.serverstats \
+    --collector.clients \
+    --no-collector.dns-lookups \
+    --web.listen-address=:9123
+
+Restart=on-failure
+RestartSec=5s
+
+# The exporter reads one socket and serves HTTP. Nothing else is needed.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+# Must be writable, not read-only. chronyd's control socket is unixgram, so the
+# exporter binds its own reply socket alongside it as
+# /run/chrony/chrony_exporter.<uuid>.sock and unlinks it after each scrape.
+# ProtectSystem=strict makes /run read-only without this, which leaves the
+# exporter running and serving nothing but chrony_up.
+ReadWritePaths=/run/chrony
+
+[Install]
+WantedBy=multi-user.target

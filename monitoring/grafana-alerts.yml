@@ -1,0 +1,499 @@
+# Grafana-managed alert rules for the Pi 5 stratum 1 server.
+# Install to /etc/grafana/provisioning/alerting/ on the Grafana host.
+#
+# Provisioned rules are read-only in the Grafana UI. Edit this file and
+# restart grafana-server to change them.
+#
+# Replace every PROMETHEUS_DATASOURCE_UID with the UID of the Prometheus
+# datasource on this Grafana before installing. Find it under
+# Connections > Data sources > Prometheus, in the URL.
+
+apiVersion: 1
+groups:
+- orgId: 1
+  name: NTP
+  folder: NTP
+  interval: 1m
+  rules:
+  - uid: ntp-chrony-unreachable
+    title: Chrony control socket unreachable
+    condition: C
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: chrony_exporter cannot reach chronyd
+      description: The exporter still serves HTTP, so the Prometheus scrape succeeds and 'up' stays 1.
+        Check that /run/chrony is writable by the exporter user; the unit needs ReadWritePaths because
+        it binds its own reply socket there.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: chrony_up
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+  - uid: ntp-lost-refclock
+    title: No longer stratum 1
+    condition: C
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Pi is no longer stratum 1
+      description: Chrony has fallen back to a network source, meaning the GPS/PPS path failed.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: chrony_tracking_stratum
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+  - uid: ntp-pps-not-synced
+    title: kPPS is not the selected sync source
+    condition: C
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: kPPS is not syncing the clock
+      description: Check /dev/pps0 and the pps-gpio overlay. kPPS is 'lock NMEA', so check the NMEA alert
+        first since losing NMEA eventually costs the PPS lock.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: sum(chrony_sources_state_info{source_name="kPPS", source_state="sync"}) or vector(0)
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+  - uid: ntp-nmea-unreachable
+    title: NMEA refclock receiving no samples
+    condition: C
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: NMEA refclock is not receiving samples
+      description: gpsd has stopped writing to /run/chrony.ttyAMA0.sock. Check gpsd and /dev/ttyAMA0.
+        This is real, unlike the dashboard's cosmetic 'unreach' state caused by noselect.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: chrony_sources_reachability_success{source_name="NMEA"}
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1
+  - uid: ntp-clock-error-high
+    title: Clock error bound above 1ms
+    condition: C
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Absolute clock error bound above 1ms
+      description: Deliberately loose. A healthy kPPS stratum 1 sits in the low hundreds of ns, so retune
+        this down once a few weeks of history exist.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: instance:chrony_clock_error_seconds:abs
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0.001
+  - uid: ntp-gps-fix-degraded
+    title: GPS lost 3D fix
+    condition: C
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: GPS does not have a 3D fix
+      description: Check antenna and sky view. Mode 3 is a 3D fix, 2 is 2D, 1 is no fix.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: gpsd_mode
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 3
+  - uid: ntp-gnss-rf-jamming
+    title: GNSS RF interference detected
+    condition: C
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: The receiver reports RF interference
+      description: State 2 is warning, 3 is critical. Cross-check gnss_rf_jamming_indicator and gnss_rf_agc_count against
+        their normal band before chasing it. This leads PPS degradation rather than following it, so kPPS may
+        still look fine.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: gnss_rf_jamming_state
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+  - uid: ntp-gnss-rf-stale
+    title: MON-RF stream stale
+    condition: C
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: The module has stopped emitting UBX-MON-RF
+      description: Every gnss_rf_ gauge is push-driven, so a stalled stream keeps its last good value and looks healthy
+        forever. Likely cause is CFG-MSGOUT-UBX_MON_RF_UART1 lost from BBR after a long power-off, so re-run
+        configure_m10s.sh. gnss_rf_up will not catch this, it only covers the gpsd socket.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: time() - gnss_rf_last_frame_timestamp_seconds
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 60
+  - uid: ntp-gnss-rf-antenna
+    title: GNSS antenna status not OK
+    condition: C
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Antenna supervisor reports a fault
+      description: 2 is OK, 3 short, 4 open, 0 and 1 are init and unknown. Paused until the field is verified. It reads 2
+        on this board, which proves it is populated but not that a real fault would move it. Unplug the
+        antenna once, confirm the value changes, then set isPaused false. The evaluator is lt 2 so it catches
+        init/unknown; use a not-equal comparison instead if short/open matter more.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: true
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: gnss_rf_antenna_status
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 2
+  - uid: ntp-exporter-down
+    title: Exporter not being scraped
+    condition: C
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: An exporter on the Pi is not being scraped
+      description: Target is down entirely. Check the exporter service and the ufw rules for 9123/9015/9100/9016.
+    noDataState: NoData
+    execErrState: Error
+    isPaused: false
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: PROMETHEUS_DATASOURCE_UID
+      model:
+        refId: A
+        expr: up{job="pi5-ntp"}
+        instant: true
+        range: false
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: lt
+            params:
+            - 1

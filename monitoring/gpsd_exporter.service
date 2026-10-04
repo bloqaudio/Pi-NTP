@@ -1,0 +1,43 @@
+[Unit]
+Description=Prometheus exporter for gpsd GPS metrics
+Documentation=https://github.com/brendanbank/gpsd-prometheus-exporter
+After=gpsd.service
+Wants=gpsd.service
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+
+# gpsd runs without -G, so it listens on loopback only and this exporter must
+# stay on the Pi.
+#
+# --pps-histogram is deliberately omitted. /dev/pps0 is not in gpsd's DEVICES
+# (chrony reads the kernel PPS directly), so gpsd emits no PPS/TOFF reports and
+# the histogram would stay empty. kPPS offset and jitter come from
+# chrony_exporter's sources collector instead.
+ExecStart=/usr/local/bin/gpsd_exporter.py \
+    -H 127.0.0.1 \
+    -p 2947 \
+    -E 9015 \
+    -L 0.0.0.0
+
+Restart=on-failure
+# gpsd may not be accepting connections yet on a cold boot; back off rather
+# than burn through the restart limit.
+RestartSec=10s
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

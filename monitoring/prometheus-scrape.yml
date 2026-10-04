@@ -1,0 +1,43 @@
+# Scrape config for the Pi 5 stratum 1 server. Merge into the
+# scrape_configs list on the Prometheus host, not on the Pi.
+#
+# 15s is deliberate. Chrony's own kPPS poll is 16s (poll 4) and the NTP
+# sources poll slower still, so scraping faster only aliases the same sample.
+
+scrape_configs:
+  - job_name: pi5-ntp
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - time.example.com:9123   # chrony_exporter
+          - time.example.com:9015   # gpsd_exporter
+          - time.example.com:9100   # node_exporter
+          - time.example.com:9016   # gnss_rf_exporter
+        labels:
+          role: stratum1
+    relabel_configs:
+      # Add a port-less 'host' label so panels can join chrony, gpsd, node and
+      # gnss_rf metrics on one series. 'instance' must keep its port -- the four
+      # targets share a job, and stripping it would make their 'up' and
+      # scrape_* series collide.
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: host
+        replacement: '$1'
+      - source_labels: [__address__]
+        regex: '.*:9123'
+        target_label: exporter
+        replacement: chrony
+      - source_labels: [__address__]
+        regex: '.*:9015'
+        target_label: exporter
+        replacement: gpsd
+      - source_labels: [__address__]
+        regex: '.*:9100'
+        target_label: exporter
+        replacement: node
+      - source_labels: [__address__]
+        regex: '.*:9016'
+        target_label: exporter
+        replacement: gnss_rf

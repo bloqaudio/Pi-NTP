@@ -343,9 +343,13 @@ NTP=<pi-ip-address>
 
 Those clients will operate as stratum 2.
 
+## Monitoring
+
+See [monitoring/README.md](monitoring/README.md) for Prometheus exporters (chrony, gpsd, node, and GNSS RF/interference), the scrape config and recording rule, and Grafana dashboards and alert rules.
+
 ## Troubleshooting
 
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues including PPS signal problems, GPS fix failures, Bluetooth/UART conflicts, SHM stalling, and chrony source selection issues.
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues including PPS signal problems, GPS fix failures, Bluetooth/UART conflicts, gpsd time-output stalls, and chrony source selection issues.
 
 ## References
 

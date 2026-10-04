@@ -1,0 +1,34 @@
+[Unit]
+Description=Prometheus exporter for u-blox UBX-MON-RF interference metrics
+After=gpsd.service
+Wants=gpsd.service
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+
+# The exporter is a passive gpsd client: it subscribes to the raw byte stream
+# and decodes the MON-RF frames the module emits on UART1. It never writes to
+# gpsd or the module, so gpsd's read-only -b is unaffected.
+ExecStart=/usr/local/bin/gnss_rf_exporter.py
+
+Restart=on-failure
+# gpsd may not be accepting connections yet on a cold boot; back off rather
+# than burn through the restart limit.
+RestartSec=10s
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
