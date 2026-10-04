@@ -1,0 +1,19 @@
+[Unit]
+Description=Configure u-blox MAX-M10S GPS for NTP timing (baud + timing)
+Documentation=file:///usr/local/sbin/configure_m10s.sh
+# Wait for the serial device to exist, then configure it BEFORE gpsd opens it.
+# This guarantees the module is at 115200 with timing settings on every boot,
+# even if the board's backup supercap drained and BBR reverted to defaults.
+After=dev-ttyAMA0.device
+Wants=dev-ttyAMA0.device
+Before=gpsd.service gpsd.socket
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/configure_m10s.sh
+# The module config takes a few seconds (baud switch + verifies); give it room.
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

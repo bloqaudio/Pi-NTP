@@ -1,0 +1,28 @@
+# /etc/default/gpsd
+# GPS daemon configuration for u-blox MAX-M10S module
+
+# UART serial device only.
+# /dev/ttyAMA0: UART0 carrying NMEA sentences from the GPS module.
+#   gpsd writes parsed time to chrony via SOCK.
+#
+# /dev/pps0 is NOT listed here. Chrony reads PPS directly from the kernel
+# via 'refclock PPS /dev/pps0'. Having gpsd also open /dev/pps0 creates
+# unnecessary SHM segments (NTP2/NTP3) that nothing reads.
+DEVICES="/dev/ttyAMA0"
+
+# gpsd options:
+#   -n  Start polling GPS immediately, don't wait for a client connection.
+#       Essential so chrony gets time data at boot without needing cgps/gpsmon.
+#   -b  Read-only mode. Don't send commands to the GPS module.
+#       Prevents gpsd from overriding our UBX configuration (baud rate,
+#       dynamic model, timepulse settings stored in BBR).
+#   -s 115200  Baud rate matching the M10S CFG-UART1-BAUDRATE setting.
+#       The M10S defaults to 9600; we configure 115200 via ubxtool for
+#       lower serial latency and headroom for additional NMEA sentences.
+# Remote gpsd access is intentionally disabled. Add -G only if you
+# explicitly need remote gpsd clients on TCP/2947.
+GPSD_OPTIONS="-n -b -s 115200"
+
+# Disable USB hotplug. This is a UART module wired to GPIO, not USB.
+# Prevents gpsd from grabbing random USB devices.
+USBAUTO="false"
