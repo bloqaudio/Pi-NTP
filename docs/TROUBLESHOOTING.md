@@ -115,7 +115,7 @@ gpsd can silently stop delivering time data to chrony on long-running instances.
 
 This behavior has been observed with the ATGM336H (AT6558-based) GPS module and may be related to how gpsd handles non-u-blox NMEA streams on long-running instances. Guides using u-blox modules (Austin's Nerdy Things, Tiago's Uputronics setup) do not report this issue. The upstream reports, however, come from u-blox users, and trace the stall to a corrupted serial read that sends gpsd into its autobaud hunt and a device reopen.
 
-Related gpsd issues: [#150](https://gitlab.com/gpsd/gpsd/-/issues/150), [#177](https://gitlab.com/gpsd/gpsd/-/issues/177), [#181](https://gitlab.com/gpsd/gpsd/-/issues/181). Fixes landed in gpsd git head in August 2023, after the 3.25 release, so 3.25 and older are still affected.
+Related gpsd issues: [#150](https://gitlab.com/gpsd/gpsd/-/issues/150), [#177](https://gitlab.com/gpsd/gpsd/-/issues/177), [#181](https://gitlab.com/gpsd/gpsd/-/issues/181). Fixes landed in gpsd git head in August 2023, after the 3.25 release, so 3.25 and older are still affected. Ubuntu 24.04 ships 3.25; Ubuntu 26.04 ships 3.27.5, which has the fixes.
 
 **Workaround:** A watchdog script monitors chrony's NMEA source and restarts gpsd when reach drops to 0. See [`scripts/gpsd-watchdog.sh`](../scripts/gpsd-watchdog.sh). Install it via cron to run every 5 minutes. This limits downtime to at most 5 minutes before auto-recovery.
 

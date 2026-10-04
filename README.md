@@ -1,6 +1,6 @@
 [![License](https://img.shields.io/badge/license-MIT-9B59B6.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%205-C51A4A)
-![OS](https://img.shields.io/badge/os-Ubuntu%2024.04-E95420)
+![OS](https://img.shields.io/badge/os-Ubuntu%2026.04-E95420)
 ![NTP](https://img.shields.io/badge/ntp-stratum%201-3498DB)
 ![Status](https://img.shields.io/badge/status-active-success)
 
@@ -20,7 +20,7 @@ This setup uses a three-layer time source hierarchy:
 
 3. **Network NTP (fallback)** - Cloudflare and Ubuntu pool servers provide sanity-checking and coarse time when GPS has no fix (cold start, antenna issues, indoor operation).
 
-The daemon chain: `gpsd` reads NMEA from `/dev/ttyAMA0` and delivers coarse time to `chrony` via a Unix socket (SOCK protocol). `chrony` reads PPS directly from `/dev/pps0` via the kernel, completely independent of gpsd. gpsd has a [documented bug](https://gitlab.com/gpsd/gpsd/-/issues/181) where it can silently stop delivering time to chrony on long-running instances. It affects both the SHM and SOCK outputs and was fixed upstream after the 3.25 release; a watchdog restarts gpsd when it happens.
+The daemon chain: `gpsd` reads NMEA from `/dev/ttyAMA0` and delivers coarse time to `chrony` via a Unix socket (SOCK protocol). `chrony` reads PPS directly from `/dev/pps0` via the kernel, completely independent of gpsd. gpsd has a [documented bug](https://gitlab.com/gpsd/gpsd/-/issues/181) where it can silently stop delivering time to chrony on long-running instances. It affects both the SHM and SOCK outputs and was fixed upstream after the 3.25 release, so Ubuntu 24.04 (gpsd 3.25) is affected and Ubuntu 26.04 (gpsd 3.27.5) carries the fixes; a watchdog restarts gpsd when it happens.
 
 As of March 25, 2026, the tested Pi 5 / Ubuntu 24.04 / gpsd 3.25 build is using `/run/chrony.ttyAMA0.sock` successfully with `offset 0.000`. Upstream gpsd documentation is inconsistent about chrony socket naming, so treat that path as tested behavior on this build, not a universal rule. Verify on your host with `chronyc sourcestats -v`, `journalctl -u gpsd`, and the presence of the expected socket in `/run`.
 
@@ -54,7 +54,7 @@ Sub-microsecond accuracy with nanosecond-level precision. 37ns system offset, 18
 
 | Part | Notes |
 |------|-------|
-| Linux SBC | Any board with a UART and a GPIO pin that supports edge interrupts (Raspberry Pi, Orange Pi, ODROID, etc.). Tested on a Raspberry Pi 5 with Ubuntu 24.04. |
+| Linux SBC | Any board with a UART and a GPIO pin that supports edge interrupts (Raspberry Pi, Orange Pi, ODROID, etc.). Tested on a Raspberry Pi 5 with Ubuntu 24.04 and 26.04. |
 | u-blox MAX-M10S GPS module | Recommended: Uputronics MAX-M10S breakout with active antenna support. Any module with PPS output works (u-blox NEO-6M, NEO-M8N, ATGM336H, etc.) but u-blox modules are recommended for best gpsd compatibility. |
 | GPS antenna | Active or passive, needs sky view. Active antenna recommended for the M10S. |
 | 5x jumper wires | Female-to-female for GPIO header connection |
@@ -80,7 +80,7 @@ Pin 12 (GPIO 18) is the default pin expected by the `pps-gpio` device tree overl
 
 ### Prerequisites
 
-Ubuntu 24.04 LTS (tested on Raspberry Pi 5, should work on other distributions and SBCs with appropriate adjustments to boot config paths).
+Ubuntu 24.04 LTS or 26.04 LTS (tested on Raspberry Pi 5, should work on other distributions and SBCs with appropriate adjustments to boot config paths).
 
 ### 1. Boot configuration
 

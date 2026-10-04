@@ -77,7 +77,8 @@ and `kPPS` series come back empty.
 ### gpsd_exporter — port 9015
 
 Install the Python gps bindings from apt, **not** pip. `python3-gps` is
-version-locked to the packaged gpsd (3.25); the PyPI `gps` package is a
+version-locked to the packaged gpsd (3.25 on Ubuntu 24.04, 3.27.5 on
+26.04); the PyPI `gps` package is a
 different, incompatible library and will fail to parse the JSON stream.
 
 ```bash
