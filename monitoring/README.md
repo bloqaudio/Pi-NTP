@@ -317,15 +317,25 @@ backfill, so the panel stays empty until an evaluation cycle has run.
 
 ## Dashboards
 
-- chrony: Grafana dashboard ID **19186**
-- gpsd: `gpsd_grafana_dashboard.json` at the root of the gpsd-prometheus-exporter
-  clone — import via Dashboards → New → Import → Upload JSON
+- chrony: Grafana dashboard ID **19186**, then apply the edits below by hand.
+  It is published without a license, so no copy is kept here.
+- gpsd: [`dashboards/gpsd.json`](dashboards/gpsd.json), with the edits below
+  already applied — import via Dashboards → New → Import → Upload JSON. It is
+  exported in Grafana's v2 dashboard schema (`dashboard.grafana.app/v2`), which
+  Grafana versions limited to the classic JSON model cannot import; on those,
+  start from `gpsd_grafana_dashboard.json` at the root of the
+  gpsd-prometheus-exporter clone and apply the edits by hand.
 - node_exporter: Grafana dashboard ID **1860**
+
+`dashboards/gpsd.json` is a modified copy of the dashboard shipped with
+[gpsd-prometheus-exporter](https://github.com/brendanbank/gpsd-prometheus-exporter),
+Copyright (c) 2023 Brendan Bank, used under the BSD 3-Clause License in
+[`dashboards/LICENSE.gpsd-prometheus-exporter`](dashboards/LICENSE.gpsd-prometheus-exporter).
 
 ### Post-import edits
 
-Re-importing either dashboard discards all of the following. Save under a new
-name to keep them.
+Re-importing an upstream dashboard discards all of the following. Save under a
+new name to keep them.
 
 **chrony 19186 — sources table shows NMEA as `unreach`.** Chrony has no state
 for "excluded by `noselect`" and falls back to `?`, which the exporter passes
@@ -333,7 +343,7 @@ through as `unreach`. NMEA is healthy; `chrony_sources_reachability_success`
 reads 1. Rewrite the label for that one source:
 
 ```
-label_replace(chrony_sources_state_info{instance="$instance"}, "source_state", "noselect", "source_name", "NMEA")
+label_replace(chrony_sources_state_info{instance="$instance"}, "source_state", "coarse time only", "source_name", "NMEA")
 ```
 
 Non-matching series pass through untouched, so a genuinely unreachable NTP
@@ -342,6 +352,21 @@ that hides the source `kPPS` depends on for its lock.
 
 The two NTP servers showing `outlier` is also correct: kPPS is `prefer` and
 several orders of magnitude better, so the combining algorithm excludes them.
+
+**chrony 19186 — added "Hardware TX timestamp ratio" panel.** Time series, Unit
+→ **Percent (0.0-1.0)**, legend `HW TX ratio`. See
+[Client-side timestamping](#client-side-timestamping) for why all three counters
+are in the denominator:
+
+```
+rate(chrony_serverstats_ntp_hw_tx_timestamps_total[5m])
+/
+(
+  rate(chrony_serverstats_ntp_hw_tx_timestamps_total[5m])
+  + rate(chrony_serverstats_ntp_daemon_tx_timestamps_total[5m])
+  + rate(chrony_serverstats_ntp_kernel_tx_timestamps_total[5m])
+)
+```
 
 **gpsd dashboard — three PPS panels have no data**, since gpsd never sees
 `/dev/pps0`. Rebuilt on chrony's kPPS measurements, which are more precise
