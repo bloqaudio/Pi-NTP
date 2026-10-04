@@ -69,7 +69,6 @@ Check `chronyc sources`:
 
 ```
 #? NMEA    0   0   377     0   +176ms[ +176ms] +/- 1000us
-#? PPS     0   4     0     -     +0ns[   +0ns] +/-    0ns
 #? kPPS    0   4     0     -     +0ns[   +0ns] +/-    0ns
 ```
 

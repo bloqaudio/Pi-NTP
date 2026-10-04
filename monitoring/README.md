@@ -115,8 +115,9 @@ Use whichever of the two the Pi 5 actually emits in the tempcomp panel below.
 ### gnss_rf_exporter — port 9016
 
 Interference and antenna-fault metrics decoded from UBX-MON-RF. `CFG-ITFM-ENABLE`
-has been on since March 2026 but nothing has ever read the result, so a degraded
-antenna or a new CW source nearby would show up only as unexplained PPS jitter.
+has been on since March 2026, but nothing read the result before this exporter;
+without it a degraded antenna or a new CW source nearby shows up only as
+unexplained PPS jitter.
 
 **Why this is not just `ubxtool -p MON-RF` on a timer.** gpsd holds `/dev/ttyAMA0`
 open exclusively, so a second reader cannot have the port, and gpsd runs `-b`
@@ -161,7 +162,7 @@ chronyc sources -v                    # kPPS still '#*', NMEA still reaching 377
 gpspipe -R | timeout 10 od -An -tx1 | grep -c 'b5 62'   # UBX frames present
 ```
 
-Only once all three look right, make it persistent and add it to the boot script:
+Only once all three look right, make it persistent:
 
 ```bash
 sudo systemctl stop gpsd
@@ -171,28 +172,13 @@ sudo systemctl start gpsd
 
 Layer 3 is RAM+BBR, same as every other setting in `configure_m10s.sh`, and for
 the same reason — BBR alone only survives while the supercap holds, so the value
-belongs in the boot script too or it is gone after a long power-off. Add it as a
-step in `../scripts/configure_m10s.sh` and re-copy to `/usr/local/sbin/`:
-
-```bash
-# Emit UBX-MON-RF on UART1 every 5 navigation epochs (5 s at the 1 Hz nav rate)
-# so the RF/interference exporter has something to read. gpsd runs read-only,
-# so the module has to push this; nothing on the Pi can poll for it.
-ubxtool -z CFG-MSGOUT-UBX_MON_RF_UART1,5,"$LAYER" -f "$DEV" -s "$BAUD" -P "$PROTVER"
-RESPONSE=$(ubxtool -g CFG-MSGOUT-UBX_MON_RF_UART1 -f "$DEV" -s "$BAUD" -P "$PROTVER" 2>&1 || true)
-if echo "$RESPONSE" | grep -q "val 5"; then
-    echo "  MON-RF output enabled at 5 s"
-else
-    echo "  WARNING: Could not verify MON-RF output setting"
-fi
-```
-
-The script is left unedited here on purpose — its copy runs on every boot, and a
-`CFG-MSGOUT` key that has not been through the RAM test above does not belong in
-the guaranteed recovery path.
+belongs in the boot script too or it is gone after a long power-off.
+`../scripts/configure_m10s.sh` already sets it as its last step; re-copy the
+script to `/usr/local/sbin/` if the installed copy predates that.
 
 **Rollback** is the same command with rate 0, or just a power cycle while it is
-still layer 1.
+still layer 1. Once the boot script sets it, remove that step from the script
+too, or the next boot turns it back on.
 
 #### 2. Install the exporter
 
@@ -279,8 +265,8 @@ signature to watch for.
 
 `gnss_rf_jamming_state >= 2` is the one worth mailing on, and it leads PPS
 degradation rather than following it — which is the entire point of collecting
-this. Add `gnss_rf_antenna_status != 2` alongside it only if the field turns out
-to be live on this board; see the caveat above.
+this. `gnss_rf_antenna_status != 2` is alerted on alongside it; the field is live
+on this board but untested against a real fault, so see the caveat above.
 
 Every gauge here is push-driven, so a stalled stream leaves the last good value
 in place and looks healthy forever. Staleness needs its own rule:

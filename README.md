@@ -222,14 +222,22 @@ echo 'KERNEL=="ttyAMA0", RUN+="/bin/setserial /dev/ttyAMA0 low_latency"' | sudo 
 
 ### 6. Configure the GPS module (u-blox MAX-M10S)
 
-If using the u-blox MAX-M10S, run the configuration script to set the baud rate, stationary dynamic model, and UTC-aligned time pulse. This requires gpsd to be stopped:
+If using the u-blox MAX-M10S, run the configuration script. It sets the baud rate to 115200, the stationary dynamic model, a UTC-aligned time pulse, the antenna cable delay, the jamming monitor, and the UBX-MON-RF output used by the [monitoring](monitoring/README.md) exporter. The cable delay is set to 15 ns for a 3 m RG174 antenna cable; change `CFG-TP-ANT_CABLEDELAY` in the script to match your own. The script stops gpsd if it is running and restarts it afterwards.
 
 ```bash
-sudo systemctl stop gpsd gpsd.socket
 sudo bash scripts/configure_m10s.sh
 ```
 
-The script stores settings in the module's battery-backed RAM (BBR), which persists across power cycles as long as the backup battery holds. See [`scripts/configure_m10s.sh`](scripts/configure_m10s.sh) for details.
+The settings are written to RAM and to the module's battery-backed RAM (BBR). On the Uputronics board BBR is held by a backup supercapacitor for hours, not weeks, so the module reverts to factory defaults after a long power-off. Install the script as a boot service so it is reapplied before gpsd starts on every boot:
+
+```bash
+sudo install -m 755 scripts/configure_m10s.sh /usr/local/sbin/
+sudo cp configs/gps-m10s-config.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable gps-m10s-config.service
+```
+
+See [`scripts/configure_m10s.sh`](scripts/configure_m10s.sh) for details.
 
 ### 7. Configure gpsd
 
