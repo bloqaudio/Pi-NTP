@@ -16,7 +16,7 @@ This setup uses a three-layer time source hierarchy:
 
 3. **Network NTP (fallback)** - Cloudflare and Ubuntu pool servers provide sanity-checking and coarse time when GPS has no fix (cold start, antenna issues, indoor operation).
 
-The daemon chain: `gpsd` reads NMEA from `/dev/ttyAMA0` and delivers coarse time to `chrony` via a Unix socket (SOCK protocol). `chrony` reads PPS directly from `/dev/pps0` via the kernel, completely independent of gpsd. This architecture avoids gpsd's shared memory (SHM) interface, which has a [documented bug](https://gitlab.com/gpsd/gpsd/-/issues/150) where the SHM writer silently stalls on long-running instances while gpsd's socket interface keeps working.
+The daemon chain: `gpsd` reads NMEA from `/dev/ttyAMA0` and delivers coarse time to `chrony` via a Unix socket (SOCK protocol). `chrony` reads PPS directly from `/dev/pps0` via the kernel, completely independent of gpsd. gpsd has a [documented bug](https://gitlab.com/gpsd/gpsd/-/issues/181) where it can silently stop delivering time to chrony on long-running instances. It affects both the SHM and SOCK outputs and was fixed upstream after the 3.25 release; a watchdog restarts gpsd when it happens.
 
 As of March 25, 2026, the tested Pi 5 / Ubuntu 24.04 / gpsd 3.25 build is using `/run/chrony.ttyAMA0.sock` successfully with `offset 0.000`. Upstream gpsd documentation is inconsistent about chrony socket naming, so treat that path as tested behavior on this build, not a universal rule. Verify on your host with `chronyc sourcestats -v`, `journalctl -u gpsd`, and the presence of the expected socket in `/run`.
 
@@ -258,7 +258,7 @@ refclock SOCK /run/chrony.ttyAMA0.sock refid NMEA offset 0.000 precision 1e-1 de
 refclock PPS /dev/pps0 refid kPPS lock NMEA maxlockage 2 poll 4 precision 1e-7 prefer
 ```
 
-**SOCK (NMEA)** - Coarse GPS time from gpsd via Unix domain socket. SOCK is used instead of gpsd's SHM (shared memory) interface because SHM has a [documented bug](https://gitlab.com/gpsd/gpsd/-/issues/150) where the writer silently stalls on long-running instances. On the tested Pi 5/MAX-M10S build, `chronyc sourcestats -v` showed a near-zero residual offset with `offset 0.000`, so that value stayed. Treat this as an empirical setting to verify on your own host, not a guaranteed default for all receivers and gpsd builds. `noselect` prevents chrony from syncing to this source directly - it exists solely to give PPS its second-of-day context.
+**SOCK (NMEA)** - Coarse GPS time from gpsd via Unix domain socket. SOCK is used instead of gpsd's SHM (shared memory) interface. This does not avoid gpsd's [documented time-output stall](https://gitlab.com/gpsd/gpsd/-/issues/181), which affects both interfaces; see [Troubleshooting](docs/TROUBLESHOOTING.md#gpsd-dropping-time-output). On the tested Pi 5/MAX-M10S build, `chronyc sourcestats -v` showed a near-zero residual offset with `offset 0.000`, so that value stayed. Treat this as an empirical setting to verify on your own host, not a guaranteed default for all receivers and gpsd builds. `noselect` prevents chrony from syncing to this source directly - it exists solely to give PPS its second-of-day context.
 
 **PPS /dev/pps0 (kPPS)** - PPS read directly from the kernel, independent of gpsd. `lock NMEA` ties the pulse to the NMEA source so chrony knows which second it belongs to. `maxlockage 2` limits how long PPS trusts stale NMEA data. `prefer` tells chrony to use this source when healthy.
 

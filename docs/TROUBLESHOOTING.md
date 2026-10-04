@@ -113,17 +113,17 @@ Check permissions: `ls -la /dev/ttyAMA0` should show `crw-rw---- 1 root dialout`
 
 gpsd can silently stop delivering time data to chrony on long-running instances. This has been observed in SHM setups and has also been reported in the field on SOCK-based setups. When it happens, `chronyc sources` shows NMEA and kPPS with `Reach: 0` and a stale `LastRx`, but `gpspipe` and `cgps` continue working - gpsd's client socket interface stays alive while its time output to chrony dies.
 
-This behavior has been observed with the ATGM336H (AT6558-based) GPS module and may be related to how gpsd handles non-u-blox NMEA streams on long-running instances. Guides using u-blox modules (Austin's Nerdy Things, Tiago's Uputronics setup) do not report this issue.
+This behavior has been observed with the ATGM336H (AT6558-based) GPS module and may be related to how gpsd handles non-u-blox NMEA streams on long-running instances. Guides using u-blox modules (Austin's Nerdy Things, Tiago's Uputronics setup) do not report this issue. The upstream reports, however, come from u-blox users, and trace the stall to a corrupted serial read that sends gpsd into its autobaud hunt and a device reopen.
 
-Related gpsd issues: [#150](https://gitlab.com/gpsd/gpsd/-/issues/150), [#177](https://gitlab.com/gpsd/gpsd/-/issues/177), [#181](https://gitlab.com/gpsd/gpsd/-/issues/181)
+Related gpsd issues: [#150](https://gitlab.com/gpsd/gpsd/-/issues/150), [#177](https://gitlab.com/gpsd/gpsd/-/issues/177), [#181](https://gitlab.com/gpsd/gpsd/-/issues/181). Fixes landed in gpsd git head in August 2023, after the 3.25 release, so 3.25 and older are still affected.
 
 **Workaround:** A watchdog script monitors chrony's NMEA source and restarts gpsd when reach drops to 0. See [`scripts/gpsd-watchdog.sh`](../scripts/gpsd-watchdog.sh). Install it via cron to run every 5 minutes. This limits downtime to at most 5 minutes before auto-recovery.
 
-**Permanent fix:** Replace the ATGM336H with a genuine u-blox module (e.g., Uputronics MAX-M10S) that gpsd is primarily developed and tested against. This was done on March 24, 2026 — see [`scripts/configure_m10s.sh`](../scripts/configure_m10s.sh) for the module configuration.
+**Hardware change:** The ATGM336H was replaced with a genuine u-blox module (Uputronics MAX-M10S), which gpsd is primarily developed and tested against, on March 24, 2026 — see [`scripts/configure_m10s.sh`](../scripts/configure_m10s.sh) for the module configuration. Because the upstream reports involve u-blox receivers too, keep the watchdog installed on gpsd 3.25 and older.
 
 ## Why SOCK instead of SHM
 
-This setup uses SOCK (Unix domain socket) for NMEA instead of SHM, and reads PPS directly from the kernel. While SOCK does not prevent every possible gpsd failure mode, it avoids gpsd's SHM writer which has additional documented reliability issues on long-running instances.
+This setup uses SOCK (Unix domain socket) for NMEA instead of SHM, and reads PPS directly from the kernel. SOCK does not protect against the stall above, which hits SHM and SOCK alike. Reading PPS from the kernel keeps the pulse itself out of gpsd, but PPS is locked to NMEA for second numbering, so a stalled NMEA source takes kPPS down with it until gpsd is restarted.
 
 As of March 25, 2026, the tested Pi 5 / Ubuntu 24.04 / gpsd 3.25 build used `/run/chrony.ttyAMA0.sock` successfully. Upstream gpsd documentation is inconsistent about whether serial timing should use `chrony.ttyAMA0.sock` or `chrony.clk.ttyAMA0.sock`, so verify the working path on your host with `chronyc sourcestats -v`, `journalctl -u gpsd`, and the contents of `/run`.
 
