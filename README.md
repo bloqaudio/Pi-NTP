@@ -1,10 +1,14 @@
+[![License](https://img.shields.io/badge/license-MIT-9B59B6.svg)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%205-C51A4A)
+![OS](https://img.shields.io/badge/os-Ubuntu%2024.04-E95420)
+![NTP](https://img.shields.io/badge/ntp-stratum%201-3498DB)
+![Status](https://img.shields.io/badge/status-active-success)
+
 # Pi-NTP
 
 GPS-disciplined Stratum 1 NTP server on a Raspberry Pi (or any Linux SBC with UART and GPIO).
 
 A sub-microsecond accurate time server built from a ~$30 GPS module and a Raspberry Pi, serving stratum 1 time to your local network. This outperforms the time infrastructure at most enterprise environments.
-
-This directory is the canonical config/documentation set. Top-level files in the parent folder are working notes and local copies.
 
 ## Architecture
 
