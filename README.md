@@ -110,9 +110,10 @@ dtparam=audio=off
 
 Edit `/boot/firmware/cmdline.txt`:
 - **Remove** `console=serial0,115200` (or `console=ttyAMA0,115200`). This prevents the kernel from claiming the UART for console output. Leave `console=tty1` in place.
-- **Add** `noswap` after `rootfstype=ext4` to disable swap, reducing unnecessary I/O latency.
 
 Reboot.
+
+Swap should be off on a timing server to avoid I/O latency. Confirm with `swapon --show`, which prints nothing when no swap is active. If it lists any, run `sudo swapoff -a` and remove the swap entry from `/etc/fstab`. Do not add `noswap` to `cmdline.txt`: it is not a kernel parameter, and the kernel logs it as unknown and ignores it.
 
 ### 2. Verify hardware
 
