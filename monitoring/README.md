@@ -317,15 +317,21 @@ backfill, so the panel stays empty until an evaluation cycle has run.
 
 ## Dashboards
 
-- chrony: Grafana dashboard ID **19186**, then apply the edits below by hand.
-  It is published without a license, so no copy is kept here.
+- chrony: [`dashboards/chrony.json`](dashboards/chrony.json), with the edits
+  below already applied.
 - gpsd: [`dashboards/gpsd.json`](dashboards/gpsd.json), with the edits below
-  already applied — import via Dashboards → New → Import → Upload JSON. It is
-  exported in Grafana's v2 dashboard schema (`dashboard.grafana.app/v2`), which
-  Grafana versions limited to the classic JSON model cannot import; on those,
-  start from `gpsd_grafana_dashboard.json` at the root of the
-  gpsd-prometheus-exporter clone and apply the edits by hand.
+  already applied.
 - node_exporter: Grafana dashboard ID **1860**
+
+Import the two JSON files via Dashboards → New → Import → Upload JSON. They are
+exported in Grafana's v2 dashboard schema (`dashboard.grafana.app/v2`), which
+Grafana versions limited to the classic JSON model cannot import; on those,
+start from the upstream dashboards — ID **19186** for chrony,
+`gpsd_grafana_dashboard.json` at the root of the gpsd-prometheus-exporter clone
+for gpsd — and apply the edits by hand.
+
+`dashboards/chrony.json` is a modified version of Grafana dashboard
+[19186](https://grafana.com/grafana/dashboards/19186-chrony/) by equinox0815.
 
 `dashboards/gpsd.json` is a modified copy of the dashboard shipped with
 [gpsd-prometheus-exporter](https://github.com/brendanbank/gpsd-prometheus-exporter),
