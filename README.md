@@ -108,7 +108,7 @@ gpu_mem=16
 dtparam=audio=off
 ```
 
-Edit `/boot/firmware/cmdline.txt`:
+Edit the kernel command line, which is `/boot/firmware/cmdline.txt` on Ubuntu 24.04 and `/boot/firmware/current/cmdline.txt` on 26.04:
 - **Remove** `console=serial0,115200` (or `console=ttyAMA0,115200`). This prevents the kernel from claiming the UART for console output. Leave `console=tty1` in place.
 
 Reboot.

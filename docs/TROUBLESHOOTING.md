@@ -45,7 +45,7 @@ If you see nothing at all:
 
 The kernel will claim UART0 for console output by default, blocking gpsd. Remove the console parameter from the kernel command line:
 
-Edit `/boot/firmware/cmdline.txt` and remove `console=serial0,115200` (or `console=ttyAMA0,115200`). Leave the `console=tty1` entry. Reboot.
+Edit `/boot/firmware/cmdline.txt` (`/boot/firmware/current/cmdline.txt` on Ubuntu 26.04) and remove `console=serial0,115200` (or `console=ttyAMA0,115200`). Leave the `console=tty1` entry. Reboot.
 
 ## Bluetooth conflict
 
